@@ -8,7 +8,7 @@ class asset_hound {
 
     private function __construct() {}
 
-    public static function add($assets) { // facade accepts asset ot array thereof
+    public static function add($assets) { // facade accepts asset or array thereof
         if(is_array($assets)) {
             foreach($assets as $asset) self::_add($asset);
         } else {
@@ -92,13 +92,15 @@ class asset_hound {
             $output[] = $tag;
         }
 
-        $output = "\n<!-- asset hound -->\n" . implode("\n", $output) . "\n\n";
+        $output = PHP_EOL . '<!-- asset hound -->' . PHP_EOL . implode(PHP_EOL, $output) . PHP_EOL .PHP_EOL;
 
         return $output;
     }
 
     private static function sort_assets() {
-        usort(self::$assets, array('self', '_sort_assets_compare'));
+        $temp = self::$assets;
+        usort($temp, array('self', '_sort_assets_compare')); // only variables can be passed by ref.
+        self::$assets = $temp;
     }
 
     private static function _sort_assets_compare($a, $b) { // do not use this method outside of sort_assets()
@@ -115,6 +117,7 @@ class asset_hound {
                     // now put conditionals at the end
                     return strcmp($a->conditional, $b->conditional); // should put them in ascending order of ie versions, and at the end of the class section.
                 } else {
+                    return $a->class > $b->class ? 1 : -1;
                     return array_search($a->class, self::$asset_classes_in_order) > array_search($b->class, self::$asset_classes_in_order) ? 1 : -1;
                 }
             } else {
@@ -155,6 +158,14 @@ class asset_hound {
 
 class asset {
 
+    const INTERNET_EXPLORER_FIX = 0;
+    const SUPER_LIBRARY = 1;
+    const LIBRARY = 2;
+    const FRAMEWORK = 3;
+    const STANDARD = 4;
+    const GLOBAL_ASSET = 5; // ('GLOBAL' is taken)
+    // to add more, insert in order and revise the numbers. the numbers can change at any time.
+
     static $asset_classes;
     static $asset_keywords;
     private static $assets_by_keyword; // will be something like array('jQuery' => {serialized asset?}); // should attempt to cache.
@@ -166,7 +177,7 @@ class asset {
         if(empty($file_name) and empty($js_code) and empty($css_code)) return false;
 
         // the real default class is 'standard' - yes, this must be applied so that global_actions can come last.
-        if(empty($class)) $class = 'standard';
+        if(empty($class)) $class = static::STANDARD;
 
         // good to specify these, i guess.
         if(empty($media)) $media = 'screen, projection';
@@ -188,7 +199,7 @@ class asset {
         return $this;
     }
 
-    // we'll put asset keywords and their definitions in an ini file. how does that sound? modify this to pull from any source youlike.
+    // we'll put asset keywords and their definitions in an ini file. how does that sound? modify this to pull from any source you like.
     static function get_asset_keywords() {
         if(isset(self::$asset_keywords)) return self::$asset_keywords;
         self::$asset_keywords = array();
@@ -216,21 +227,21 @@ class asset {
         // todo - these need to come from sarumino.com but there is dns waiting issues.
         self::$assets_by_keyword = array(
             'mBox' => array(
-                new asset('http://www.levitonpress.com/public/assets/lib/mBox/mBox.js'),
+                new asset('http://www.levitonpress.com/public/assets/lib/mBox/mBox.js', asset::LIBRARY),
                 // add your own extension. jeez. new asset('http://www.levitonpress.com/clients/lib/mBox/mBox_extension.js'),
-                new asset('http://www.levitonpress.com/public/assets/lib/mBox/mBox.css')
+                new asset('http://www.levitonpress.com/public/assets/lib/mBox/mBox.css', asset::LIBRARY)
             ),
-            'term_browse' => array(
+            'term_browse' => array( // sarumino
                 new asset('/public/assets/lib/xio/term_browse/term_browse.js'),
                 new asset('/public/assets/lib/xio/term_browse/term_browse.css')
             ),
             'jQuery_1.7' => array(
-                new asset('https://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.min.js', 'super library')
+                new asset('https://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.min.js', asset::SUPER_LIBRARY)
             ),
             'skeleton_1.2' => array(
-                new asset('http://www.levitonpress.com/public/assets/lib/Skeleton/1.2/base.css', 'framework'),
-                new asset('http://www.levitonpress.com/public/assets/lib/Skeleton/1.2/layout.css', 'framework'),
-                new asset('http://www.levitonpress.com/public/assets/lib/Skeleton/1.2/skeleton.css', 'framework')
+                new asset('http://www.levitonpress.com/public/assets/lib/Skeleton/1.2/base.css', asset::FRAMEWORK),
+                new asset('http://www.levitonpress.com/public/assets/lib/Skeleton/1.2/layout.css', asset::FRAMEWORK),
+                new asset('http://www.levitonpress.com/public/assets/lib/Skeleton/1.2/skeleton.css', asset::FRAMEWORK)
             )
         );
     }
